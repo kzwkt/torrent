@@ -219,4 +219,54 @@
 
     // Filename and size info below preview or button
     const info = document.createElement('p');
-    info.textContent = `${filename} (${sizeFormatted})
+    info.textContent = `${filename} (${sizeFormatted})`;
+    div.appendChild(info);
+
+    filePreviews.appendChild(div);
+  }
+
+  previewBtn.addEventListener('click', function () {
+    const magnetLink = magnetInput.value.trim();
+    if (!magnetLink) {
+      errorEl.textContent = 'Please enter a valid magnet link.';
+      return;
+    }
+
+    clearUI();
+    errorEl.textContent = '';
+
+    client.add(magnetLink, { dht: true, announce: [] }, function (torrent) {
+      currentTorrent = torrent;
+      torrentInfo.style.display = 'block';
+      torrentNameEl.textContent = torrent.name;
+      fileCountEl.textContent = torrent.files.length;
+      totalSizeEl.textContent = formatBytes(torrent.length);
+
+      // Update progress bar
+      torrent.on('download', function (bytes) {
+        const percent = (torrent.downloaded / torrent.length) * 100;
+        progressBar.style.width = percent + '%';
+        downloadSpeedEl.textContent = formatBytes(torrent.downloadSpeed) + '/s';
+      });
+
+      // Display file previews
+      torrent.files.forEach(createFilePreview);
+
+      // Display peer count
+      torrent.on('peer', function () {
+        peerCountEl.textContent = torrent.numPeers;
+      });
+
+      torrent.on('done', function () {
+        console.log('Download complete!');
+      });
+    });
+
+    client.on('error', function (err) {
+      errorEl.textContent = 'Error: ' + err.message;
+    });
+  });
+</script>
+
+</body>
+</html>
