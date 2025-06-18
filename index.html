@@ -193,29 +193,28 @@
       video.src = url;
       div.appendChild(video);
     }
-    // Other files get a download button
-    else {
-      const btn = document.createElement('button');
-      btn.className = 'download-btn';
-      btn.textContent = 'Download';
-      btn.onclick = () => {
-        file.getBlob((err, blob) => {
-          if (err) {
-            alert('Download error: ' + err.message);
-            return;
-          }
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = file.name;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        });
-      };
-      div.appendChild(btn);
-    }
+
+    // Create a separate download button for each file
+    const btn = document.createElement('button');
+    btn.className = 'download-btn';
+    btn.textContent = 'Download';
+    btn.onclick = () => {
+      file.getBlob((err, blob) => {
+        if (err) {
+          alert('Download error: ' + err.message);
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    };
+    div.appendChild(btn);
 
     // Filename and size info below preview or button
     const info = document.createElement('p');
@@ -232,39 +231,46 @@
       return;
     }
 
-    clearUI();
-    errorEl.textContent = '';
+    try {
+      // URL encode the magnet link to handle special characters
+      const encodedMagnetLink = encodeURI(magnetLink);
 
-    client.add(magnetLink, { dht: true, announce: [] }, function (torrent) {
-      currentTorrent = torrent;
-      torrentInfo.style.display = 'block';
-      torrentNameEl.textContent = torrent.name;
-      fileCountEl.textContent = torrent.files.length;
-      totalSizeEl.textContent = formatBytes(torrent.length);
+      clearUI();
+      errorEl.textContent = '';
 
-      // Update progress bar
-      torrent.on('download', function (bytes) {
-        const percent = (torrent.downloaded / torrent.length) * 100;
-        progressBar.style.width = percent + '%';
-        downloadSpeedEl.textContent = formatBytes(torrent.downloadSpeed) + '/s';
+      client.add(encodedMagnetLink, { dht: true, announce: [] }, function (torrent) {
+        currentTorrent = torrent;
+        torrentInfo.style.display = 'block';
+        torrentNameEl.textContent = torrent.name;
+        fileCountEl.textContent = torrent.files.length;
+        totalSizeEl.textContent = formatBytes(torrent.length);
+
+        // Update progress bar
+        torrent.on('download', function (bytes) {
+          const percent = (torrent.downloaded / torrent.length) * 100;
+          progressBar.style.width = percent + '%';
+          downloadSpeedEl.textContent = formatBytes(torrent.downloadSpeed) + '/s';
+        });
+
+        // Display file previews
+        torrent.files.forEach(createFilePreview);
+
+        // Display peer count
+        torrent.on('peer', function () {
+          peerCountEl.textContent = torrent.numPeers;
+        });
+
+        torrent.on('done', function () {
+          console.log('Download complete!');
+        });
       });
 
-      // Display file previews
-      torrent.files.forEach(createFilePreview);
-
-      // Display peer count
-      torrent.on('peer', function () {
-        peerCountEl.textContent = torrent.numPeers;
+      client.on('error', function (err) {
+        errorEl.textContent = 'Error: ' + err.message;
       });
-
-      torrent.on('done', function () {
-        console.log('Download complete!');
-      });
-    });
-
-    client.on('error', function (err) {
-      errorEl.textContent = 'Error: ' + err.message;
-    });
+    } catch (error) {
+      errorEl.textContent = 'Error: Invalid Magnet Link.';
+    }
   });
 </script>
 
