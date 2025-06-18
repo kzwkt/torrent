@@ -6,7 +6,7 @@
   <title>Torrent Preview with WebTorrent</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: "Arial", sans-serif;
       padding: 20px;
       background: #fafafa;
       color: #222;
@@ -72,26 +72,6 @@
       color: red;
       margin-top: 10px;
     }
-    label, input, button {
-      font-size: 14px;
-    }
-    input {
-      padding: 6px;
-      width: 320px;
-      box-sizing: border-box;
-    }
-    button {
-      padding: 6px 12px;
-      margin-left: 10px;
-      cursor: pointer;
-      background-color: #2a7a2a;
-      border: none;
-      color: white;
-      border-radius: 3px;
-    }
-    button:hover {
-      background-color: #1f5c1f;
-    }
   </style>
 </head>
 <body>
@@ -120,6 +100,8 @@
 <script src="https://cdn.jsdelivr.net/npm/webtorrent@latest/webtorrent.min.js"></script>
 <script>
   const client = new WebTorrent();
+  client.setMaxListeners(20); // Increase max listeners to avoid warning
+
   const previewBtn = document.getElementById('previewBtn');
   const magnetInput = document.getElementById('magnetLink');
 
@@ -168,6 +150,35 @@
     }
   }
 
+  previewBtn.addEventListener('click', function () {
+    clearUI();
+    const magnetLink = encodeURI(magnetInput.value); // Ensure the magnet link is properly encoded
+
+    try {
+      client.add(magnetLink, function (torrent) {
+        currentTorrent = torrent;
+
+        // Display Torrent Info
+        torrentNameEl.textContent = torrent.name;
+        fileCountEl.textContent = torrent.files.length;
+        totalSizeEl.textContent = formatBytes(torrent.length);
+        peerCountEl.textContent = torrent.numPeers;
+        downloadSpeedEl.textContent = formatBytes(torrent.downloadSpeed) + '/s';
+
+        torrent.on('download', function (bytes) {
+          const progress = (torrent.downloaded / torrent.length) * 100;
+          progressBar.style.width = progress + '%';
+        });
+
+        // Display File Previews
+        torrent.files.forEach(createFilePreview);
+        torrentInfo.style.display = 'block';
+      });
+    } catch (err) {
+      errorEl.textContent = 'Invalid magnet link: ' + err.message;
+    }
+  });
+
   function createFilePreview(file) {
     const div = document.createElement('div');
     div.className = 'file-preview';
@@ -175,7 +186,6 @@
     const sizeFormatted = formatBytes(file.length);
     const filename = file.name;
 
-    // Image preview
     if (filename.match(/\.(jpg|jpeg|png|gif)$/i)) {
       const img = document.createElement('img');
       const url = URL.createObjectURL(file.createReadStream());
@@ -183,95 +193,42 @@
       img.src = url;
       img.alt = filename;
       div.appendChild(img);
-    }
-    // Video preview
-    else if (filename.match(/\.(mp4|webm|ogg)$/i)) {
+    } else if (filename.match(/\.(mp4|webm|ogg)$/i)) {
       const video = document.createElement('video');
       video.controls = true;
       const url = URL.createObjectURL(file.createReadStream());
       objectUrls.push(url);
       video.src = url;
       div.appendChild(video);
+    } else {
+      const btn = document.createElement('button');
+      btn.className = 'download-btn';
+      btn.textContent = 'Download';
+      btn.onclick = () => {
+        file.getBlob((err, blob) => {
+          if (err) {
+            alert('Download error: ' + err.message);
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = file.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        });
+      };
+      div.appendChild(btn);
     }
 
-    // Create a separate download button for each file
-    const btn = document.createElement('button');
-    btn.className = 'download-btn';
-    btn.textContent = 'Download';
-    btn.onclick = () => {
-      file.getBlob((err, blob) => {
-        if (err) {
-          alert('Download error: ' + err.message);
-          return;
-        }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      });
-    };
-    div.appendChild(btn);
-
-    // Filename and size info below preview or button
     const info = document.createElement('p');
     info.textContent = `${filename} (${sizeFormatted})`;
     div.appendChild(info);
 
     filePreviews.appendChild(div);
   }
-
-  previewBtn.addEventListener('click', function () {
-    const magnetLink = magnetInput.value.trim();
-    if (!magnetLink) {
-      errorEl.textContent = 'Please enter a valid magnet link.';
-      return;
-    }
-
-    try {
-      // URL encode the magnet link to handle special characters
-      const encodedMagnetLink = encodeURI(magnetLink);
-
-      clearUI();
-      errorEl.textContent = '';
-
-      client.add(encodedMagnetLink, { dht: true, announce: [] }, function (torrent) {
-        currentTorrent = torrent;
-        torrentInfo.style.display = 'block';
-        torrentNameEl.textContent = torrent.name;
-        fileCountEl.textContent = torrent.files.length;
-        totalSizeEl.textContent = formatBytes(torrent.length);
-
-        // Update progress bar
-        torrent.on('download', function (bytes) {
-          const percent = (torrent.downloaded / torrent.length) * 100;
-          progressBar.style.width = percent + '%';
-          downloadSpeedEl.textContent = formatBytes(torrent.downloadSpeed) + '/s';
-        });
-
-        // Display file previews
-        torrent.files.forEach(createFilePreview);
-
-        // Display peer count
-        torrent.on('peer', function () {
-          peerCountEl.textContent = torrent.numPeers;
-        });
-
-        torrent.on('done', function () {
-          console.log('Download complete!');
-        });
-      });
-
-      client.on('error', function (err) {
-        errorEl.textContent = 'Error: ' + err.message;
-      });
-    } catch (error) {
-      errorEl.textContent = 'Error: Invalid Magnet Link.';
-    }
-  });
 </script>
 
 </body>
