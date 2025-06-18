@@ -1,127 +1,279 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Torrent Preview with WebTorrent</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    h1 {
-      color: #4CAF50;
-    }
-    #torrentInfo {
-      margin-bottom: 20px;
-    }
-    .file-preview {
-      display: inline-block;
-      margin: 10px;
-      text-align: center;
-    }
-    .file-preview img, .file-preview video {
-      max-width: 200px;
-      max-height: 200px;
-      margin-bottom: 5px;
-    }
-    .file-preview button {
-      margin-top: 5px;
-      padding: 5px 10px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    .file-preview button:hover {
-      background-color: #45a049;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Torrent Preview with WebTorrent</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    background: #fafafa;
+    color: #222;
+  }
+  h1 {
+    color: #2a7a2a;
+  }
+  #torrentInfo {
+    margin: 10px 0 20px;
+    padding: 10px;
+    background: #e6ffe6;
+    border: 1px solid #2a7a2a;
+    border-radius: 4px;
+  }
+  #progressBarContainer {
+    background: #ddd;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+    height: 18px;
+  }
+  #progressBar {
+    height: 18px;
+    width: 0;
+    background: #2a7a2a;
+    transition: width 0.3s ease;
+  }
+  #filePreviews {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  .file-preview {
+    width: 200px;
+    border: 1px solid #ccc;
+    background: white;
+    border-radius: 5px;
+    padding: 8px;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 14px;
+  }
+  .file-preview img,
+  .file-preview video {
+    max-width: 100%;
+    max-height: 160px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    object-fit: contain;
+  }
+  button.download-btn {
+    background: #2a7a2a;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  button.download-btn:hover {
+    background: #1f5c1f;
+  }
+  #error {
+    color: red;
+    margin-top: 10px;
+  }
+  label, input, button {
+    font-size: 14px;
+  }
+  input {
+    padding: 6px;
+    width: 320px;
+    box-sizing: border-box;
+  }
+  button {
+    padding: 6px 12px;
+    margin-left: 10px;
+    cursor: pointer;
+    background-color: #2a7a2a;
+    border: none;
+    color: white;
+    border-radius: 3px;
+  }
+  button:hover {
+    background-color: #1f5c1f;
+  }
+</style>
 </head>
 <body>
 
-  <h1>Torrent Preview</h1>
-  <label for="magnetLink">Enter Magnet Link:</label>
-  <input type="text" id="magnetLink" placeholder="Enter Magnet Link" style="width: 300px; padding: 5px;">
-  <button onclick="previewTorrent()">Preview Torrent</button>
+<h1>Torrent Preview</h1>
 
-  <div id="torrentInfo"></div>
-  <div id="filePreviews"></div>
+<label for="magnetLink">Enter Magnet Link:</label><br />
+<input type="text" id="magnetLink" placeholder="Enter magnet link here" />
+<button id="previewBtn">Preview Torrent</button>
 
-  <script src="https://cdn.jsdelivr.net/npm/webtorrent@latest/webtorrent.min.js"></script>
-  <script>
-    const client = new WebTorrent();
-    
-    // Function to preview the torrent from the magnet link
-    function previewTorrent() {
-      const magnetLink = document.getElementById('magnetLink').value.trim();
-      
-      if (!magnetLink) {
-        alert("Please enter a valid magnet link.");
-        return;
-      }
+<div id="error"></div>
 
-      // Clear previous preview content
-      document.getElementById('torrentInfo').innerHTML = '';
-      document.getElementById('filePreviews').innerHTML = '';
+<div id="torrentInfo" style="display:none;">
+  <strong>Torrent Name:</strong> <span id="torrentName"></span><br />
+  <strong>Files:</strong> <span id="fileCount"></span><br />
+  <strong>Total Size:</strong> <span id="totalSize"></span><br />
+  <strong>Peers:</strong> <span id="peerCount"></span><br />
+  <strong>Download Speed:</strong> <span id="downloadSpeed"></span><br />
+  <div id="progressBarContainer">
+    <div id="progressBar"></div>
+  </div>
+</div>
 
-      // Add the torrent to the WebTorrent client
-      client.add(magnetLink, (torrent) => {
-        // Show torrent name and other metadata
-        document.getElementById('torrentInfo').innerHTML = `
-          <h3>Torrent Name: ${torrent.name}</h3>
-          <p>Number of files: ${torrent.files.length}</p>
-          <p>Total Size: ${(torrent.length / (1024 * 1024)).toFixed(2)} MB</p>
-        `;
+<div id="filePreviews"></div>
 
-        // Iterate over the files in the torrent
-        torrent.files.forEach((file) => {
-          const fileElement = document.createElement('div');
-          fileElement.classList.add('file-preview');
-          
-          // Display image previews for image files (jpg, png, gif)
-          if (file.name.match(/\.(jpg|jpeg|png|gif)$/i)) {
-            const imgElement = document.createElement('img');
-            imgElement.src = URL.createObjectURL(file.createReadStream());
-            fileElement.appendChild(imgElement);
-            fileElement.innerHTML += `<p>${file.name}</p>`;
+<script src="https://cdn.jsdelivr.net/npm/webtorrent@latest/webtorrent.min.js"></script>
+<script>
+  const client = new WebTorrent();
+  const previewBtn = document.getElementById('previewBtn');
+  const magnetInput = document.getElementById('magnetLink');
+
+  const torrentInfo = document.getElementById('torrentInfo');
+  const torrentNameEl = document.getElementById('torrentName');
+  const fileCountEl = document.getElementById('fileCount');
+  const totalSizeEl = document.getElementById('totalSize');
+  const peerCountEl = document.getElementById('peerCount');
+  const downloadSpeedEl = document.getElementById('downloadSpeed');
+  const progressBar = document.getElementById('progressBar');
+  const filePreviews = document.getElementById('filePreviews');
+  const errorEl = document.getElementById('error');
+
+  let currentTorrent = null;
+  let objectUrls = [];
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024,
+      dm = 2,
+      sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  }
+
+  function clearObjectUrls() {
+    objectUrls.forEach(url => URL.revokeObjectURL(url));
+    objectUrls = [];
+  }
+
+  function clearUI() {
+    torrentInfo.style.display = 'none';
+    torrentNameEl.textContent = '';
+    fileCountEl.textContent = '';
+    totalSizeEl.textContent = '';
+    peerCountEl.textContent = '';
+    downloadSpeedEl.textContent = '';
+    progressBar.style.width = '0%';
+    filePreviews.innerHTML = '';
+    errorEl.textContent = '';
+    clearObjectUrls();
+
+    if (currentTorrent) {
+      client.remove(currentTorrent.infoHash);
+      currentTorrent = null;
+    }
+  }
+
+  function createFilePreview(file) {
+    const div = document.createElement('div');
+    div.className = 'file-preview';
+
+    const sizeFormatted = formatBytes(file.length);
+    const filename = file.name;
+
+    // Image preview
+    if (filename.match(/\.(jpg|jpeg|png|gif)$/i)) {
+      const img = document.createElement('img');
+      const url = URL.createObjectURL(file.createReadStream());
+      objectUrls.push(url);
+      img.src = url;
+      img.alt = filename;
+      div.appendChild(img);
+    }
+    // Video preview
+    else if (filename.match(/\.(mp4|webm|ogg)$/i)) {
+      const video = document.createElement('video');
+      video.controls = true;
+      const url = URL.createObjectURL(file.createReadStream());
+      objectUrls.push(url);
+      video.src = url;
+      div.appendChild(video);
+    }
+    // Other files get a download button
+    else {
+      const btn = document.createElement('button');
+      btn.className = 'download-btn';
+      btn.textContent = 'Download';
+      btn.onclick = () => {
+        file.getBlob((err, blob) => {
+          if (err) {
+            alert('Download error: ' + err.message);
+            return;
           }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = file.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        });
+      };
+      div.appendChild(btn);
+    }
 
-          // Display video previews for video files (mp4, webm)
-          else if (file.name.match(/\.(mp4|webm)$/i)) {
-            const videoElement = document.createElement('video');
-            videoElement.src = URL.createObjectURL(file.createReadStream());
-            videoElement.controls = true;
-            fileElement.appendChild(videoElement);
-            fileElement.innerHTML += `<p>${file.name}</p>`;
-          }
+    // Filename and size info below preview or button
+    const info = document.createElement('p');
+    info.textContent = `${filename} (${sizeFormatted})`;
+    info.style.wordBreak = 'break-word';
+    div.appendChild(info);
 
-          // For non-image, non-video files, show download button
-          else {
-            const downloadButton = document.createElement('button');
-            downloadButton.textContent = 'Download';
-            downloadButton.onclick = () => {
-              file.getBlob((err, blob) => {
-                if (err) return console.error(err);
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = file.name;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-              });
-            };
-            fileElement.appendChild(downloadButton);
-            fileElement.innerHTML += `<p>${file.name}</p>`;
-          }
+    return div;
+  }
 
-          // Append the file element to the preview area
-          document.getElementById('filePreviews').appendChild(fileElement);
+  previewBtn.addEventListener('click', () => {
+    clearUI();
+
+    const magnet = magnetInput.value.trim();
+    if (!magnet) {
+      errorEl.textContent = 'Please enter a magnet link.';
+      return;
+    }
+
+    try {
+      currentTorrent = client.add(magnet);
+
+      currentTorrent.on('error', (err) => {
+        errorEl.textContent = 'Torrent error: ' + err.message;
+      });
+
+      currentTorrent.on('metadata', () => {
+        torrentInfo.style.display = 'block';
+        torrentNameEl.textContent = currentTorrent.name;
+        fileCountEl.textContent = currentTorrent.files.length;
+        totalSizeEl.textContent = formatBytes(currentTorrent.length);
+
+        // Show all file previews
+        currentTorrent.files.forEach(file => {
+          const preview = createFilePreview(file);
+          filePreviews.appendChild(preview);
         });
       });
+
+      currentTorrent.on('download', () => {
+        const downloaded = currentTorrent.downloaded;
+        const total = currentTorrent.length;
+        const percent = ((downloaded / total) * 100).toFixed(1);
+
+        progressBar.style.width = `${percent}%`;
+        downloadSpeedEl.textContent = formatBytes(currentTorrent.downloadSpeed) + '/s';
+        peerCountEl.textContent = currentTorrent.numPeers;
+      });
+
+      currentTorrent.on('done', () => {
+        progressBar.style.width = '100%';
+        downloadSpeedEl.textContent = 'Done';
+      });
+    } catch (e) {
+      errorEl.textContent = 'Invalid magnet link or torrent error.';
     }
-  </script>
+  });
+</script>
 
 </body>
 </html>
