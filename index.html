@@ -1,98 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Torrent Preview with WebTorrent</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    padding: 20px;
-    background: #fafafa;
-    color: #222;
-  }
-  h1 {
-    color: #2a7a2a;
-  }
-  #torrentInfo {
-    margin: 10px 0 20px;
-    padding: 10px;
-    background: #e6ffe6;
-    border: 1px solid #2a7a2a;
-    border-radius: 4px;
-  }
-  #progressBarContainer {
-    background: #ddd;
-    border-radius: 10px;
-    overflow: hidden;
-    margin: 10px 0;
-    height: 18px;
-  }
-  #progressBar {
-    height: 18px;
-    width: 0;
-    background: #2a7a2a;
-    transition: width 0.3s ease;
-  }
-  #filePreviews {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-  }
-  .file-preview {
-    width: 200px;
-    border: 1px solid #ccc;
-    background: white;
-    border-radius: 5px;
-    padding: 8px;
-    box-sizing: border-box;
-    text-align: center;
-    font-size: 14px;
-  }
-  .file-preview img,
-  .file-preview video {
-    max-width: 100%;
-    max-height: 160px;
-    margin-bottom: 8px;
-    border-radius: 4px;
-    object-fit: contain;
-  }
-  button.download-btn {
-    background: #2a7a2a;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 3px;
-    cursor: pointer;
-  }
-  button.download-btn:hover {
-    background: #1f5c1f;
-  }
-  #error {
-    color: red;
-    margin-top: 10px;
-  }
-  label, input, button {
-    font-size: 14px;
-  }
-  input {
-    padding: 6px;
-    width: 320px;
-    box-sizing: border-box;
-  }
-  button {
-    padding: 6px 12px;
-    margin-left: 10px;
-    cursor: pointer;
-    background-color: #2a7a2a;
-    border: none;
-    color: white;
-    border-radius: 3px;
-  }
-  button:hover {
-    background-color: #1f5c1f;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Torrent Preview with WebTorrent</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #fafafa;
+      color: #222;
+    }
+    h1 {
+      color: #2a7a2a;
+    }
+    #torrentInfo {
+      margin: 10px 0 20px;
+      padding: 10px;
+      background: #e6ffe6;
+      border: 1px solid #2a7a2a;
+      border-radius: 4px;
+    }
+    #progressBarContainer {
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 10px 0;
+      height: 18px;
+    }
+    #progressBar {
+      height: 18px;
+      width: 0;
+      background: #2a7a2a;
+      transition: width 0.3s ease;
+    }
+    #filePreviews {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .file-preview {
+      width: 200px;
+      border: 1px solid #ccc;
+      background: white;
+      border-radius: 5px;
+      padding: 8px;
+      box-sizing: border-box;
+      text-align: center;
+      font-size: 14px;
+    }
+    .file-preview img,
+    .file-preview video {
+      max-width: 100%;
+      max-height: 160px;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      object-fit: contain;
+    }
+    button.download-btn {
+      background: #2a7a2a;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    button.download-btn:hover {
+      background: #1f5c1f;
+    }
+    #error {
+      color: red;
+      margin-top: 10px;
+    }
+    label, input, button {
+      font-size: 14px;
+    }
+    input {
+      padding: 6px;
+      width: 320px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 6px 12px;
+      margin-left: 10px;
+      cursor: pointer;
+      background-color: #2a7a2a;
+      border: none;
+      color: white;
+      border-radius: 3px;
+    }
+    button:hover {
+      background-color: #1f5c1f;
+    }
+  </style>
 </head>
 <body>
 
@@ -219,61 +219,4 @@
 
     // Filename and size info below preview or button
     const info = document.createElement('p');
-    info.textContent = `${filename} (${sizeFormatted})`;
-    info.style.wordBreak = 'break-word';
-    div.appendChild(info);
-
-    return div;
-  }
-
-  previewBtn.addEventListener('click', () => {
-    clearUI();
-
-    const magnet = magnetInput.value.trim();
-    if (!magnet) {
-      errorEl.textContent = 'Please enter a magnet link.';
-      return;
-    }
-
-    try {
-      currentTorrent = client.add(magnet);
-
-      currentTorrent.on('error', (err) => {
-        errorEl.textContent = 'Torrent error: ' + err.message;
-      });
-
-      currentTorrent.on('metadata', () => {
-        torrentInfo.style.display = 'block';
-        torrentNameEl.textContent = currentTorrent.name;
-        fileCountEl.textContent = currentTorrent.files.length;
-        totalSizeEl.textContent = formatBytes(currentTorrent.length);
-
-        // Show all file previews
-        currentTorrent.files.forEach(file => {
-          const preview = createFilePreview(file);
-          filePreviews.appendChild(preview);
-        });
-      });
-
-      currentTorrent.on('download', () => {
-        const downloaded = currentTorrent.downloaded;
-        const total = currentTorrent.length;
-        const percent = ((downloaded / total) * 100).toFixed(1);
-
-        progressBar.style.width = `${percent}%`;
-        downloadSpeedEl.textContent = formatBytes(currentTorrent.downloadSpeed) + '/s';
-        peerCountEl.textContent = currentTorrent.numPeers;
-      });
-
-      currentTorrent.on('done', () => {
-        progressBar.style.width = '100%';
-        downloadSpeedEl.textContent = 'Done';
-      });
-    } catch (e) {
-      errorEl.textContent = 'Invalid magnet link or torrent error.';
-    }
-  });
-</script>
-
-</body>
-</html>
+    info.textContent = `${filename} (${sizeFormatted})
