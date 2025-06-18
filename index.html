@@ -152,7 +152,13 @@
 
   previewBtn.addEventListener('click', function () {
     clearUI();
-    const magnetLink = encodeURI(magnetInput.value); // Ensure the magnet link is properly encoded
+    let magnetLink = magnetInput.value.trim();
+
+    // Ensure we use the correct format for the magnet link
+    // WebTorrent expects a standard magnet link format
+    if (magnetLink.includes("xt.1")) {
+      magnetLink = magnetLink.replace(/xt\.1=urn:btih:/, "xt=urn:btih:");  // Adjust for non-standard xt.1 key
+    }
 
     try {
       client.add(magnetLink, function (torrent) {
